@@ -12,6 +12,37 @@ provider "aws" {
   region = var.aws_region
 }
 
+# API Gateway
+resource "aws_api_gateway_rest_api" "api" {
+  name        = "${var.service_name}-api"
+  description = "API invoked from Line"
+  tags = {
+    Service = var.service_name
+  }
+}
+
+resource "aws_api_gateway_resource" "linebot_resource" {
+  path_part   = "linebot"
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  rest_api_id = aws_api_gateway_rest_api.api.id
+}
+
+resource "aws_api_gateway_method" "post_method" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.linebot_resource.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "integration" {
+  rest_api_id             = aws_api_gateway_rest_api.api.id
+  resource_id             = aws_api_gateway_resource.linebot_resource.id
+  http_method             = aws_api_gateway_method.post_method.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.lambda_replier.invoke_arn
+}
+
 # IAM
 data "aws_iam_policy_document" "assume_role_policy" {
   statement {
@@ -82,7 +113,9 @@ resource "aws_lambda_function" "lambda_replier" {
   description      = "reply message"
   environment {
     variables = {
-      OPENAI_API_KEY = var.openai_api_key
+      LINE_CHANNEL_ACCESS_TOKEN = var.line_channel_access_token
+      LINE_CHANNEL_SECRET       = var.line_channel_secret
+      OPENAI_API_KEY            = var.openai_api_key
     }
   }
   handler = "replier.lambda_handler"
@@ -99,4 +132,14 @@ resource "aws_lambda_function" "lambda_replier" {
   tags = {
     Service = var.service_name
   }
+}
+
+resource "aws_lambda_permission" "apigw_lambda" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda_replier.function_name
+  principal     = "apigateway.amazonaws.com"
+
+  # More: http://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-control-access-using-iam-policies-to-invoke-api.html
+  source_arn = "arn:aws:execute-api:${var.aws_region}:${var.aws_account_id}:${aws_api_gateway_rest_api.api.id}/*/${aws_api_gateway_method.post_method.http_method}${aws_api_gateway_resource.linebot_resource.path}"
 }

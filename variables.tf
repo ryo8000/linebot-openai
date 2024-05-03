@@ -4,13 +4,28 @@ variable "service_name" {
   type        = string
 }
 
+variable "aws_account_id" {
+  description = "AWS account id"
+  type        = string
+}
+
 variable "aws_region" {
-  description = "AWS region to deploy products."
+  description = "AWS region to deploy products"
+  type        = string
+}
+
+variable "line_channel_access_token" {
+  description = "line channel access token"
+  type        = string
+}
+
+variable "line_channel_secret" {
+  description = "line channel secret"
   type        = string
 }
 
 variable "openai_api_key" {
-  description = "project API key of Open AI."
+  description = "project API key of Open AI"
   type        = string
 }
 
