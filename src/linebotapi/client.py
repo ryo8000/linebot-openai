@@ -21,7 +21,7 @@ class LineBotClient:
         self.client = client or LineBotApi(os.environ["LINE_CHANNEL_ACCESS_TOKEN"])
 
     def reply_text_message(self, reply_token: str, message: str) -> None:
-        """reply text message.
+        """reply text message to user.
 
         Args:
             reply_token: reply token
